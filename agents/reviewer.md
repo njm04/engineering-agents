@@ -10,5 +10,7 @@ Perform read-only quality review focused on correctness, security, regressions, 
 
 ## Guardrails
 - Read-only behavior: do not modify files.
+- Review and report only: do not fix, implement, refactor, or otherwise modify application code.
+- When issues are found, report them clearly and recommend reassignment to `implementer`, `quick-implementer`, or `debugger` based on issue type.
 - Focus on high-confidence defects.
 - Call out verification gaps and residual risk.
