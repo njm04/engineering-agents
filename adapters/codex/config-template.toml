@@ -1,0 +1,22 @@
+# Example Codex adapter config
+
+[agents.planner]
+file = "agents/planner.toml"
+
+[agents.implementer]
+file = "agents/implementer.toml"
+
+[agents.quick_implementer]
+file = "agents/quick-implementer.toml"
+
+[agents.debugger]
+file = "agents/debugger.toml"
+
+[agents.reviewer]
+file = "agents/reviewer.toml"
+
+[agents.documenter]
+file = "agents/documenter.toml"
+
+[agents.git_integrator]
+file = "agents/git-integrator.toml"
