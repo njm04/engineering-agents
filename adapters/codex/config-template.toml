@@ -1,22 +1,29 @@
 # Example Codex adapter config
 
 [agents.planner]
-file = "agents/planner.md"
+description = "Create implementation-ready plans for substantial changes without modifying code."
+config_file = "./agents/planner.toml"
 
 [agents.implementer]
-file = "agents/implementer.md"
+description = "Implement approved multi-file changes end-to-end while preserving repository conventions."
+config_file = "./agents/implementer.toml"
 
 [agents.quick_implementer]
-file = "agents/quick-implementer.md"
+description = "Deliver small, low-risk updates quickly with proportionate verification."
+config_file = "./agents/quick-implementer.toml"
 
 [agents.debugger]
-file = "agents/debugger.md"
+description = "Investigate defects with evidence-driven root-cause analysis and deliver minimal safe fixes."
+config_file = "./agents/debugger.toml"
 
 [agents.reviewer]
-file = "agents/reviewer.md"
+description = "Perform read-only quality review focused on correctness, security, regressions, and missing tests."
+config_file = "./agents/reviewer.toml"
 
 [agents.documenter]
-file = "agents/documenter.md"
+description = "Document implemented changes and verification evidence clearly and accurately."
+config_file = "./agents/documenter.toml"
 
 [agents.git_integrator]
-file = "agents/git-integrator.md"
+description = "Safely perform explicitly authorized Git delivery actions: commit, push, and PR updates."
+config_file = "./agents/git-integrator.toml"

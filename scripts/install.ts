@@ -60,6 +60,20 @@ const installCopilotAgents = () => {
   }
 };
 
+const installCodexAgents = () => {
+  const agentsDir = path.join(repoRoot, "agents");
+  for (const entry of fs.readdirSync(agentsDir).filter((name) => name.endsWith(".md"))) {
+    const destination = path.join(target, ".codex", "agents", entry.replace(/\.md$/, ".toml"));
+    if (fs.existsSync(destination) && !force) {
+      continue;
+    }
+
+    const instructions = fs.readFileSync(path.join(agentsDir, entry), "utf8");
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, `sandbox_mode = "workspace-write"\n\ndeveloper_instructions = ${JSON.stringify(instructions)}\n`);
+  }
+};
+
 copy(path.join(repoRoot, "templates", "AGENTS.md"), path.join(target, "AGENTS.md"));
 copy(path.join(repoRoot, "templates", "project-profile.example.yml"), path.join(target, "project-profile.example.yml"));
 
@@ -73,6 +87,7 @@ if (adapter === "copilot") {
 
 if (adapter === "codex") {
   copy(path.join(repoRoot, "adapters", "codex", "config-template.toml"), path.join(target, ".codex", "config.toml"));
+  installCodexAgents();
   copyDir(path.join(repoRoot, "agents"), path.join(target, "agents"));
 }
 
