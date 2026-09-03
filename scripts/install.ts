@@ -8,6 +8,9 @@ const repoRoot = path.resolve(currentDir, "..");
 const args = process.argv.slice(2);
 const target = args.find((arg: string) => !arg.startsWith("--"));
 const adapter = args.find((arg: string) => arg.startsWith("--adapter="))?.split("=")[1] ?? "copilot";
+if (adapter !== "copilot" && adapter !== "codex") {
+  throw new Error(`Unsupported adapter "${adapter}". Expected "copilot" or "codex".`);
+}
 const force = args.includes("--force");
 
 if (!target) {
