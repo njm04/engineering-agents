@@ -30,6 +30,13 @@ const copy = (from: string, to: string) => {
   fs.copyFileSync(from, to);
 };
 
+const copyDir = (from: string, to: string) => {
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from)) {
+    copy(path.join(from, entry), path.join(to, entry));
+  }
+};
+
 copy(path.join(repoRoot, "templates", "AGENTS.md"), path.join(target, "AGENTS.md"));
 copy(path.join(repoRoot, "templates", "project-profile.example.yml"), path.join(target, "project-profile.example.yml"));
 
@@ -42,6 +49,7 @@ if (adapter === "copilot") {
 
 if (adapter === "codex") {
   copy(path.join(repoRoot, "adapters", "codex", "config-template.toml"), path.join(target, ".codex", "config.toml"));
+  copyDir(path.join(repoRoot, "agents"), path.join(target, "agents"));
 }
 
 console.log(`Installed agent templates into ${target} (${adapter}).`);
