@@ -37,6 +37,29 @@ const copyDir = (from: string, to: string) => {
   }
 };
 
+const installCopilotAgents = () => {
+  const agentsDir = path.join(repoRoot, "agents");
+  for (const entry of fs.readdirSync(agentsDir)) {
+    const source = fs.readFileSync(path.join(agentsDir, entry), "utf8");
+    const name = path.basename(entry, ".md");
+    const description = source.match(/^## Purpose\s*\n(.+)$/m)?.[1];
+    if (!description) {
+      throw new Error(`Missing purpose for agent "${name}".`);
+    }
+
+    const destination = path.join(target, ".github", "agents", `${name}.agent.md`);
+    if (fs.existsSync(destination) && !force) {
+      continue;
+    }
+
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(
+      destination,
+      `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${source}`,
+    );
+  }
+};
+
 copy(path.join(repoRoot, "templates", "AGENTS.md"), path.join(target, "AGENTS.md"));
 copy(path.join(repoRoot, "templates", "project-profile.example.yml"), path.join(target, "project-profile.example.yml"));
 
@@ -45,6 +68,7 @@ if (adapter === "copilot") {
     path.join(repoRoot, "adapters", "copilot", "copilot-instructions-template.md"),
     path.join(target, ".github", "copilot-instructions.md"),
   );
+  installCopilotAgents();
 }
 
 if (adapter === "codex") {
