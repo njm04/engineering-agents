@@ -17,6 +17,14 @@ if (!path.isAbsolute(target)) {
   throw new Error("Target path must be absolute.");
 }
 
+const relativeTarget = path.relative(repoRoot, path.resolve(target));
+const targetIsInsideRepo =
+  relativeTarget === "" ||
+  (relativeTarget !== ".." && !relativeTarget.startsWith(`..${path.sep}`) && !path.isAbsolute(relativeTarget));
+if (targetIsInsideRepo) {
+  throw new Error("Target path must be outside the engineering-agents repository.");
+}
+
 const sources = ["agents", "standards", "adapters", "templates"];
 
 const copyRecursive = (from: string, to: string) => {
