@@ -47,6 +47,8 @@ const installCopilotAgents = () => {
       throw new Error(`Missing purpose for agent "${name}".`);
     }
 
+    const readOnlyTools =
+      name === "planner" || name === "reviewer" ? "\ntools:\n  - read\n  - search" : "";
     const destination = path.join(target, ".github", "agents", `${name}.agent.md`);
     if (fs.existsSync(destination) && !force) {
       continue;
@@ -55,7 +57,7 @@ const installCopilotAgents = () => {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(
       destination,
-      `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${source}`,
+      `---\nname: ${name}\ndescription: ${JSON.stringify(description)}${readOnlyTools}\n---\n\n${source}`,
     );
   }
 };
