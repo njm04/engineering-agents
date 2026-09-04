@@ -65,14 +65,16 @@ const installCopilotAgents = () => {
 const installCodexAgents = () => {
   const agentsDir = path.join(repoRoot, "agents");
   for (const entry of fs.readdirSync(agentsDir).filter((name) => name.endsWith(".md"))) {
+    const name = path.basename(entry, ".md");
     const destination = path.join(target, ".codex", "agents", entry.replace(/\.md$/, ".toml"));
     if (fs.existsSync(destination) && !force) {
       continue;
     }
 
     const instructions = fs.readFileSync(path.join(agentsDir, entry), "utf8");
+    const sandboxMode = name === "planner" || name === "reviewer" ? "read-only" : "workspace-write";
     fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.writeFileSync(destination, `sandbox_mode = "workspace-write"\n\ndeveloper_instructions = ${JSON.stringify(instructions)}\n`);
+    fs.writeFileSync(destination, `sandbox_mode = ${JSON.stringify(sandboxMode)}\n\ndeveloper_instructions = ${JSON.stringify(instructions)}\n`);
   }
 };
 
