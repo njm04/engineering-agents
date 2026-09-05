@@ -59,7 +59,12 @@ const copyDir = (from: string, to: string, seen = new Set<string>()) => {
         copyDir(resolvedSource, destination, seen);
         continue;
       }
-      copy(resolvedSource, destination);
+      if (fs.existsSync(destination) && !force) {
+        continue;
+      }
+      fs.rmSync(destination, { recursive: true, force: true });
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.symlinkSync(fs.readlinkSync(source), destination);
       continue;
     }
     copy(source, destination);
