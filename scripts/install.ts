@@ -39,16 +39,7 @@ const copy = (from: string, to: string) => {
 };
 
 const copyDir = (from: string, to: string) => {
-  fs.mkdirSync(to, { recursive: true });
-  for (const entry of fs.readdirSync(from)) {
-    const source = path.join(from, entry);
-    const destination = path.join(to, entry);
-    if (fs.statSync(source).isDirectory()) {
-      copyDir(source, destination);
-      continue;
-    }
-    copy(source, destination);
-  }
+  fs.cpSync(from, to, { recursive: true, force });
 };
 
 const installCopilotAgents = () => {
