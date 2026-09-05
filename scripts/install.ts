@@ -38,20 +38,25 @@ const copy = (from: string, to: string) => {
   fs.copyFileSync(from, to);
 };
 
-const copyDir = (from: string, to: string) => {
+const copyDir = (from: string, to: string, seen = new Set<string>()) => {
+  const realFrom = fs.realpathSync(from);
+  if (seen.has(realFrom)) {
+    return;
+  }
+  seen.add(realFrom);
   fs.mkdirSync(to, { recursive: true });
   for (const entry of fs.readdirSync(from)) {
     const source = path.join(from, entry);
     const destination = path.join(to, entry);
     const sourceStat = fs.lstatSync(source);
     if (sourceStat.isDirectory()) {
-      copyDir(source, destination);
+      copyDir(source, destination, seen);
       continue;
     }
     if (sourceStat.isSymbolicLink()) {
       const resolvedSource = fs.realpathSync(source);
       if (fs.statSync(resolvedSource).isDirectory()) {
-        copyDir(resolvedSource, destination);
+        copyDir(resolvedSource, destination, seen);
         continue;
       }
       copy(resolvedSource, destination);
@@ -59,6 +64,7 @@ const copyDir = (from: string, to: string) => {
     }
     copy(source, destination);
   }
+  seen.delete(realFrom);
 };
 
 const installCopilotAgents = () => {
