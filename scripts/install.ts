@@ -21,6 +21,14 @@ if (!path.isAbsolute(target)) {
   throw new Error("Target path must be absolute.");
 }
 
+const relativeTarget = path.relative(repoRoot, path.resolve(target));
+const targetIsInsideRepo =
+  relativeTarget === "" ||
+  (relativeTarget !== ".." && !relativeTarget.startsWith(`..${path.sep}`) && !path.isAbsolute(relativeTarget));
+if (targetIsInsideRepo) {
+  throw new Error("Target path must be outside the engineering-agents repository.");
+}
+
 const copy = (from: string, to: string) => {
   if (fs.existsSync(to) && !force) {
     return;
@@ -30,11 +38,38 @@ const copy = (from: string, to: string) => {
   fs.copyFileSync(from, to);
 };
 
-const copyDir = (from: string, to: string) => {
+const copyDir = (from: string, to: string, seen = new Set<string>()) => {
+  const realFrom = fs.realpathSync(from);
+  if (seen.has(realFrom)) {
+    return;
+  }
+  seen.add(realFrom);
   fs.mkdirSync(to, { recursive: true });
   for (const entry of fs.readdirSync(from)) {
-    copy(path.join(from, entry), path.join(to, entry));
+    const source = path.join(from, entry);
+    const destination = path.join(to, entry);
+    const sourceStat = fs.lstatSync(source);
+    if (sourceStat.isDirectory()) {
+      copyDir(source, destination, seen);
+      continue;
+    }
+    if (sourceStat.isSymbolicLink()) {
+      const resolvedSource = fs.realpathSync(source);
+      if (fs.statSync(resolvedSource).isDirectory()) {
+        copyDir(resolvedSource, destination, seen);
+        continue;
+      }
+      if (fs.existsSync(destination) && !force) {
+        continue;
+      }
+      fs.rmSync(destination, { recursive: true, force: true });
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.symlinkSync(fs.readlinkSync(source), destination);
+      continue;
+    }
+    copy(source, destination);
   }
+  seen.delete(realFrom);
 };
 
 const installCopilotAgents = () => {
@@ -80,6 +115,8 @@ const installCodexAgents = () => {
 
 copy(path.join(repoRoot, "templates", "AGENTS.md"), path.join(target, "AGENTS.md"));
 copy(path.join(repoRoot, "templates", "project-profile.example.yml"), path.join(target, "project-profile.example.yml"));
+copyDir(path.join(repoRoot, "agents"), path.join(target, "agents"));
+copyDir(path.join(repoRoot, "standards"), path.join(target, "standards"));
 
 if (adapter === "copilot") {
   copy(
@@ -92,7 +129,6 @@ if (adapter === "copilot") {
 if (adapter === "codex") {
   copy(path.join(repoRoot, "adapters", "codex", "config-template.toml"), path.join(target, ".codex", "config.toml"));
   installCodexAgents();
-  copyDir(path.join(repoRoot, "agents"), path.join(target, "agents"));
 }
 
 console.log(`Installed agent templates into ${target} (${adapter}).`);
