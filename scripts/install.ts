@@ -49,12 +49,12 @@ const copyDir = (from: string, to: string) => {
       continue;
     }
     if (sourceStat.isSymbolicLink()) {
-      if (fs.existsSync(destination) && !force) {
+      const resolvedSource = fs.realpathSync(source);
+      if (fs.statSync(resolvedSource).isDirectory()) {
+        copyDir(resolvedSource, destination);
         continue;
       }
-      fs.rmSync(destination, { recursive: true, force: true });
-      fs.mkdirSync(path.dirname(destination), { recursive: true });
-      fs.symlinkSync(fs.readlinkSync(source), destination);
+      copy(resolvedSource, destination);
       continue;
     }
     copy(source, destination);
