@@ -180,7 +180,7 @@ for (const linkType of ["absolute", "relative", "chain", "parent traversal"]) {
     }
     if (linkType === "chain" && !fileLink(t, destination, path.join(target, "intermediate.md"))) return;
     if (!fileLink(t, linkType === "chain" ? "intermediate.md" : destination, path.join(target, "AGENTS.md"))) return;
-    const originalEntries = fs.readdirSync(target);
+    const originalEntries = fs.readdirSync(target).sort();
     assert.equal(fs.existsSync(path.join(target, "AGENTS.md")), false);
     assert.ok(fs.lstatSync(path.join(target, "AGENTS.md")).isSymbolicLink());
     for (const script of ["install", "sync"]) {
@@ -188,7 +188,7 @@ for (const linkType of ["absolute", "relative", "chain", "parent traversal"]) {
         const result = command(script, [target, "--adapter=codex", ...flags], false);
         assert.match(result.stderr, /escapes target/);
         assert.equal(fs.existsSync(outside), false);
-        assert.deepEqual(fs.readdirSync(target), originalEntries);
+        assert.deepEqual(fs.readdirSync(target).sort(), originalEntries);
       }
     }
   });
@@ -219,7 +219,7 @@ test("directory link cycles fail before writing output", t => {
   for (const script of ["install", "sync"]) {
     const result = command(script, [target, "--force"], false);
     assert.match(result.stderr, /Symbolic link cycle/);
-    assert.deepEqual(fs.readdirSync(target), ["redirect", "standards"]);
+    assert.deepEqual(fs.readdirSync(target).sort(), ["redirect", "standards"]);
   }
 });
 
@@ -233,3 +233,39 @@ test("directory output links within the target remain supported", t => {
     assert.equal(read(target, "shared-standards/common.md"), read(repoRoot, "standards/common.md"));
   }
 });
+
+test("forced deployment rejects hard-linked output before writing any files", t => {
+  const base = fixture(t);
+  const target = path.join(base, "target");
+  const original = "outside content must survive";
+  write(base, "outside.md", original);
+  fs.mkdirSync(target);
+  fs.linkSync(path.join(base, "outside.md"), path.join(target, "AGENTS.md"));
+  assert.equal(fs.statSync(path.join(target, "AGENTS.md")).nlink, 2);
+  for (const script of ["install", "sync"]) {
+    for (const adapter of ["codex", "copilot"]) {
+      const result = command(script, [target, `--adapter=${adapter}`, "--force"], false);
+      assert.equal(read(base, "outside.md"), original);
+      assert.equal(read(target, "AGENTS.md"), original);
+      assert.match(result.stderr, /Cannot overwrite hard-linked file: AGENTS\.md/);
+      assert.deepEqual(fs.readdirSync(target), ["AGENTS.md"]);
+    }
+  }
+});
+
+for (const [file, flags] of [["AGENTS.md", []], [".codex/config.toml", ["--force"]]]) {
+  test(`deployment preserves hard-linked ${file} when no overwrite is needed`, t => {
+    const base = fixture(t);
+    const target = path.join(base, "target");
+    const original = "project-owned content";
+    write(base, "outside.md", original);
+    fs.mkdirSync(path.dirname(path.join(target, file)), { recursive: true });
+    fs.linkSync(path.join(base, "outside.md"), path.join(target, file));
+    for (const script of ["install", "sync"]) {
+      command(script, [target, "--adapter=codex", ...flags]);
+      assert.equal(read(base, "outside.md"), original);
+      assert.equal(read(target, file), original);
+      assert.equal(fs.statSync(path.join(target, file)).nlink, 2);
+    }
+  });
+}

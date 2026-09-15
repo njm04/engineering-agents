@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject forced overwrites of hard-linked files before writing deployment output,
+  and make directory-listing regression assertions independent of filesystem order.
 - Resolve dangling output links before checking destination boundaries, and reject
   link cycles before writing files. Add regression coverage for these cases.
 - Generate complete standalone Codex agents with names, descriptions, instructions,

@@ -74,6 +74,9 @@ directories for reference.
 - Targets must be absolute and outside this source repository. Unknown options,
   invalid adapters, and links that redirect output outside the target are rejected.
   This includes dangling links to missing destinations; link cycles are also rejected.
+- Forced updates reject regular-file destinations with multiple hard links before
+  writing any files. Existing files that would be preserved, including Codex project
+  settings, remain untouched.
 
 For installations from the initial release, run sync with `--force` after reviewing
 customizations. This fills missing standards and replaces active Codex files with

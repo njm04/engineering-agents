@@ -127,8 +127,14 @@ export function deploy(options: Options, operation: Operation): void {
 
   const resolvedTarget = realDestination(target);
   for (const file of files.keys()) {
-    if (!isWithin(resolvedTarget, realDestination(path.join(target, file)))) {
+    const destination = realDestination(path.join(target, file));
+    if (!isWithin(resolvedTarget, destination)) {
       throw new Error(`Destination escapes target through a symbolic link: ${file}`);
+    }
+    // Hard links share file contents even when their paths are inside the target.
+    const entry = fs.lstatSync(destination, { throwIfNoEntry: false });
+    if (force && file !== ".codex/config.toml" && entry?.isFile() && entry.nlink > 1) {
+      throw new Error(`Cannot overwrite hard-linked file: ${file}`);
     }
   }
   let written = 0;
