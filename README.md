@@ -73,6 +73,7 @@ directories for reference.
   roles are not automatically deleted.
 - Targets must be absolute and outside this source repository. Unknown options,
   invalid adapters, and links that redirect output outside the target are rejected.
+  This includes dangling links to missing destinations; link cycles are also rejected.
 
 For installations from the initial release, run sync with `--force` after reviewing
 customizations. This fills missing standards and replaces active Codex files with

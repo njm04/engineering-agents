@@ -34,6 +34,17 @@ function write(target, file, content) {
   fs.writeFileSync(destination, content);
 }
 
+function fileLink(t, destination, link) {
+  try {
+    fs.symlinkSync(destination, link, "file");
+    return true;
+  } catch (error) {
+    if (process.platform !== "win32" || error.code !== "EPERM") throw error;
+    t.skip("Windows requires Developer Mode or symlink privileges for file symlinks.");
+    return false;
+  }
+}
+
 for (const adapter of ["codex", "copilot"]) {
   test(`${adapter}: fresh install is complete and preserves canonical instructions`, t => {
     const target = path.join(fixture(t), "target with spaces");
@@ -152,4 +163,73 @@ test("linked output cannot escape the requested target", t => {
   assert.match(result.stderr, /escapes target/);
   assert.deepEqual(fs.readdirSync(outside), []);
   assert.ok(!fs.existsSync(path.join(target, "AGENTS.md")));
+});
+
+for (const linkType of ["absolute", "relative", "chain", "parent traversal"]) {
+  test(`dangling ${linkType} output link cannot create a file outside the target`, t => {
+    const base = fixture(t);
+    const target = path.join(base, "target");
+    const outside = path.join(base, "missing.md");
+    fs.mkdirSync(target);
+    let destination = linkType === "absolute" ? outside : path.relative(target, outside);
+    if (linkType === "parent traversal") {
+      const child = path.join(base, "child");
+      fs.mkdirSync(child);
+      fs.symlinkSync(child, path.join(target, "shortcut"), process.platform === "win32" ? "junction" : "dir");
+      destination = `shortcut${path.sep}..${path.sep}missing.md`;
+    }
+    if (linkType === "chain" && !fileLink(t, destination, path.join(target, "intermediate.md"))) return;
+    if (!fileLink(t, linkType === "chain" ? "intermediate.md" : destination, path.join(target, "AGENTS.md"))) return;
+    const originalEntries = fs.readdirSync(target);
+    assert.equal(fs.existsSync(path.join(target, "AGENTS.md")), false);
+    assert.ok(fs.lstatSync(path.join(target, "AGENTS.md")).isSymbolicLink());
+    for (const script of ["install", "sync"]) {
+      for (const flags of [[], ["--force"]]) {
+        const result = command(script, [target, "--adapter=codex", ...flags], false);
+        assert.match(result.stderr, /escapes target/);
+        assert.equal(fs.existsSync(outside), false);
+        assert.deepEqual(fs.readdirSync(target), originalEntries);
+      }
+    }
+  });
+}
+
+test("dangling directory output link cannot create directories outside the target", t => {
+  const base = fixture(t);
+  const target = path.join(base, "target");
+  const outside = path.join(base, "missing-directory");
+  fs.mkdirSync(target);
+  fs.symlinkSync(outside, path.join(target, "standards"), process.platform === "win32" ? "junction" : "dir");
+  assert.equal(fs.existsSync(path.join(target, "standards")), false);
+  for (const script of ["install", "sync"]) {
+    const result = command(script, [target, "--force"], false);
+    assert.match(result.stderr, /escapes target/);
+    assert.equal(fs.existsSync(outside), false);
+    assert.deepEqual(fs.readdirSync(target), ["standards"]);
+  }
+});
+
+test("directory link cycles fail before writing output", t => {
+  const target = fixture(t);
+  const first = path.join(target, "standards");
+  const second = path.join(target, "redirect");
+  const type = process.platform === "win32" ? "junction" : "dir";
+  fs.symlinkSync(second, first, type);
+  fs.symlinkSync(first, second, type);
+  for (const script of ["install", "sync"]) {
+    const result = command(script, [target, "--force"], false);
+    assert.match(result.stderr, /Symbolic link cycle/);
+    assert.deepEqual(fs.readdirSync(target), ["redirect", "standards"]);
+  }
+});
+
+test("directory output links within the target remain supported", t => {
+  const target = fixture(t);
+  const destination = path.join(target, "shared-standards");
+  fs.mkdirSync(destination);
+  fs.symlinkSync(destination, path.join(target, "standards"), process.platform === "win32" ? "junction" : "dir");
+  for (const script of ["install", "sync"]) {
+    command(script, [target, "--force"]);
+    assert.equal(read(target, "shared-standards/common.md"), read(repoRoot, "standards/common.md"));
+  }
 });

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Resolve dangling output links before checking destination boundaries, and reject
+  link cycles before writing files. Add regression coverage for these cases.
 - Generate complete standalone Codex agents with names, descriptions, instructions,
   and role-specific sandbox defaults; replace legacy per-role config registrations.
 - Share deployment logic between install and sync. Install both canonical roles and

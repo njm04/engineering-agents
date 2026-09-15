@@ -35,12 +35,23 @@ function isWithin(parent: string, candidate: string): boolean {
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
 }
 
-// Resolve existing ancestors so junctions cannot bypass source and target boundaries.
-function realDestination(target: string): string {
-  if (fs.existsSync(target)) return fs.realpathSync(target);
+// Resolve each ancestor and link, including links whose destinations do not exist.
+function realDestination(target: string, links = new Set<string>()): string {
   const parent = path.dirname(target);
-  if (parent === target) throw new Error(`Target volume does not exist: ${target}`);
-  return path.join(realDestination(parent), path.basename(target));
+  if (parent === target) return fs.realpathSync(target);
+  const destination = path.join(realDestination(parent, links), path.basename(target));
+  const entry = fs.lstatSync(destination, { throwIfNoEntry: false });
+  if (!entry?.isSymbolicLink()) return destination;
+  if (links.has(destination)) throw new Error(`Symbolic link cycle at: ${destination}`);
+  links.add(destination);
+  try {
+    const link = fs.readlinkSync(destination);
+    // Preserve '..' until preceding components have been resolved through links.
+    const linkedTarget = path.isAbsolute(link) ? link : `${path.dirname(destination)}${path.sep}${link}`;
+    return realDestination(linkedTarget, links);
+  } finally {
+    links.delete(destination);
+  }
 }
 
 export function readRoles() {
