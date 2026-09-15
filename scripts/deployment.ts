@@ -154,11 +154,12 @@ export function deploy(options: Options, operation: Operation): void {
   const claimedDestinations = new Map<string, string>();
   for (const file of files.keys()) {
     const destination = validateOutputPath(target, resolvedTarget, file);
-    const claimedBy = claimedDestinations.get(destination);
+    const destinationKey = process.platform === "win32" ? destination.toLowerCase() : destination;
+    const claimedBy = claimedDestinations.get(destinationKey);
     if (claimedBy) {
       throw new Error(`Multiple outputs resolve to the same destination: ${claimedBy} and ${file}`);
     }
-    claimedDestinations.set(destination, file);
+    claimedDestinations.set(destinationKey, file);
     // Hard links share file contents even when their paths are inside the target.
     const entry = fs.lstatSync(destination, { throwIfNoEntry: false });
     if (force && file !== ".codex/config.toml" && entry?.isFile() && entry.nlink > 1) {
