@@ -81,6 +81,31 @@ export function codexFiles(): Map<string, string> {
   return new Map(readRoles().map(role => [`.codex/agents/${role.name}.toml`, renderCodex(role)]));
 }
 
+function validateOutputPath(target: string, resolvedTarget: string, file: string): string {
+  let ancestor = target;
+  for (const segment of file.split(path.sep).slice(0, -1)) {
+    ancestor = path.join(ancestor, segment);
+    const entry = fs.lstatSync(ancestor, { throwIfNoEntry: false });
+    if (!entry) continue;
+    const resolvedAncestor = realDestination(ancestor);
+    if (!isWithin(resolvedTarget, resolvedAncestor)) {
+      throw new Error(`Destination escapes target through a symbolic link: ${file}`);
+    }
+    if (!fs.lstatSync(resolvedAncestor, { throwIfNoEntry: false })?.isDirectory()) {
+      throw new Error(`Destination ancestor is not a directory: ${path.relative(target, ancestor)}`);
+    }
+  }
+  const destination = realDestination(path.join(target, file));
+  if (!isWithin(resolvedTarget, destination)) {
+    throw new Error(`Destination escapes target through a symbolic link: ${file}`);
+  }
+  const entry = fs.lstatSync(destination, { throwIfNoEntry: false });
+  if (entry && !entry.isFile()) {
+    throw new Error(`Destination is not a file: ${file}`);
+  }
+  return destination;
+}
+
 export function deploy(options: Options, operation: Operation): void {
   const { target, force } = options;
   if (isWithin(fs.realpathSync(repoRoot), realDestination(target))) {
@@ -128,10 +153,7 @@ export function deploy(options: Options, operation: Operation): void {
   const resolvedTarget = realDestination(target);
   const claimedDestinations = new Map<string, string>();
   for (const file of files.keys()) {
-    const destination = realDestination(path.join(target, file));
-    if (!isWithin(resolvedTarget, destination)) {
-      throw new Error(`Destination escapes target through a symbolic link: ${file}`);
-    }
+    const destination = validateOutputPath(target, resolvedTarget, file);
     const claimedBy = claimedDestinations.get(destination);
     if (claimedBy) {
       throw new Error(`Multiple outputs resolve to the same destination: ${claimedBy} and ${file}`);

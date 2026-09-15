@@ -248,6 +248,24 @@ test("preflight rejects aliased output paths before writing files", t => {
   }
 });
 
+test("preflight rejects incompatible destination types before writing files", t => {
+  for (const [setup, expected, entries] of [
+    [target => fs.mkdirSync(path.join(target, "AGENTS.md")), /Destination is not a file: AGENTS\.md/, ["AGENTS.md"]],
+    [target => write(target, "standards", "project-owned content"), /Destination ancestor is not a directory: standards/, ["standards"]],
+  ]) {
+    const target = fixture(t);
+    setup(target);
+    for (const script of ["install", "sync"]) {
+      for (const flags of [[], ["--force"]]) {
+        const result = command(script, [target, "--adapter=codex", ...flags], false);
+        assert.match(result.stderr, expected);
+        assert.equal(fs.existsSync(path.join(target, ".codex", "agents", "planner.toml")), false);
+        assert.deepEqual(fs.readdirSync(target).sort(), entries);
+      }
+    }
+  }
+});
+
 test("forced deployment rejects hard-linked output before writing any files", t => {
   const base = fixture(t);
   const target = path.join(base, "target");
