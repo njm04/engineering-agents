@@ -126,11 +126,17 @@ export function deploy(options: Options, operation: Operation): void {
   }
 
   const resolvedTarget = realDestination(target);
+  const claimedDestinations = new Map<string, string>();
   for (const file of files.keys()) {
     const destination = realDestination(path.join(target, file));
     if (!isWithin(resolvedTarget, destination)) {
       throw new Error(`Destination escapes target through a symbolic link: ${file}`);
     }
+    const claimedBy = claimedDestinations.get(destination);
+    if (claimedBy) {
+      throw new Error(`Multiple outputs resolve to the same destination: ${claimedBy} and ${file}`);
+    }
+    claimedDestinations.set(destination, file);
     // Hard links share file contents even when their paths are inside the target.
     const entry = fs.lstatSync(destination, { throwIfNoEntry: false });
     if (force && file !== ".codex/config.toml" && entry?.isFile() && entry.nlink > 1) {

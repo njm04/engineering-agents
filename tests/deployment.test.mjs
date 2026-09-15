@@ -234,6 +234,20 @@ test("directory output links within the target remain supported", t => {
   }
 });
 
+test("preflight rejects aliased output paths before writing files", t => {
+  const target = fixture(t);
+  fs.mkdirSync(path.join(target, "standards"), { recursive: true });
+  if (!fileLink(t, path.join("standards", "common.md"), path.join(target, "AGENTS.md"))) return;
+  assert.ok(fs.lstatSync(path.join(target, "AGENTS.md")).isSymbolicLink());
+  const duplicateDestination = /Multiple outputs resolve to the same destination: (AGENTS\.md and standards[\\/]common\.md|standards[\\/]common\.md and AGENTS\.md)/;
+  for (const script of ["install", "sync"]) {
+    const result = command(script, [target, "--adapter=codex", "--force"], false);
+    assert.match(result.stderr, duplicateDestination);
+    assert.equal(fs.existsSync(path.join(target, "standards", "common.md")), false);
+    assert.deepEqual(fs.readdirSync(target).sort(), ["AGENTS.md", "standards"]);
+  }
+});
+
 test("forced deployment rejects hard-linked output before writing any files", t => {
   const base = fixture(t);
   const target = path.join(base, "target");
