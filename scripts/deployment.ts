@@ -169,7 +169,7 @@ export function deploy(options: Options, operation: Operation): void {
   let written = 0;
   let skipped = 0;
   for (const [file, content] of files) {
-    const destination = path.join(target, file);
+    const destination = realDestination(path.join(target, file));
     // Shared Codex settings belong to the project, even during a forced sync.
     if (fs.existsSync(destination) && (!force || file === ".codex/config.toml")) {
       skipped++;
